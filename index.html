@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vòng quay may mắn </title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Roboto:wght@800&display=swap" rel="stylesheet">
+  <style>
+    :root { 
+      --wheel-size: 500px;}
+    body {
+      font-family: 'Inter', Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      color: #333;
+    }
+    h1 { 
+      margin: 8px 0 12px; 
+      font-size: 50px; 
+      color: #170954; 
+      font-family:Arial, Helvetica, sans-serif;
+       -webkit-text-stroke: 1px #160f54;
+     }
+   /*mũi tên*/
+    #needle {
+      position: absolute;
+      width: 60px;      
+      height: auto;     
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -60%);
+      z-index: 20;
+      pointer-events: none;
+    }
+
+
+    #wheel-container {
+      position: relative;
+      width: min(80vmin, var(--wheel-size));
+      height: min(80vmin, var(--wheel-size));
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-top: 40px;
+      background: #fff;
+      border-radius: 50%;
+      padding: 5px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.3);
+      background: transparent !important; 
+      padding: 0 !important;            
+      box-shadow: none;
+    }
+  
+
+    #wheel {
+      width: 100%; height: 100%;
+      border-radius: 50%;
+    }
+
+    .button-group {
+      position: fixed;    /* Cố định ở góc màn hình */
+      bottom: 20px;       /* Cách đáy */
+      left: 20px;         /* Cách lề trái */
+      display: flex;
+      flex-direction: column; /* Xếp hàng dọc */
+      gap: 8px;           /* Khoảng cách giữa các nút */
+      z-index: 1000;
+      margin: 0;          /* Xóa margin cũ */
+  }
+    .button-group button {
+      padding: 8px 12px; 
+      font-size: 14px; 
+      font-weight: 600;
+      border: 0; border-radius: 50px; color: #fff;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0,0,0,.2);
+      transition: transform 0.1s ease, filter 0.2s;
+      margin-right: 10px;
+    }
+    .button-group button:active { transform: scale(0.96); }
+    #resetListBtn {
+      font-size: 12px;      
+      padding: 8px 10px;   
+    }
+    #spinBtn,
+    #resetListBtn {
+      background: #face64;
+      color: #3e446b;
+      font-size: 22px;
+      padding: 18px 18px;
+      border-radius: 20px;
+    }
+
+    #resetListBtn {
+      background: #78909c;
+      color: #fff;
+    }
+
+
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      display: flex; justify-content: center; align-items: center;
+      z-index: 1000; opacity: 0; visibility: hidden;
+      transition: all 0.3s ease;
+    }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal-content {
+      background: #fff; padding: 24px; border-radius: 20px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+      width: 90%; max-width: 500px; transform: scale(0.9);
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      display: flex; flex-direction: column; max-height: 90vh;
+    }
+    .modal-overlay.active .modal-content { transform: scale(1); }
+    .modal-content h2 { margin:0 0 16px; font-size: 22px; color: #333; }
+    .modal-content textarea {
+      flex-grow: 1;
+      width: 100%; height: 150px;
+      margin-bottom: 15px; padding: 12px;
+      border: 1px solid #ddd; border-radius: 12px;
+      font-size: 14px; line-height: 1.5;
+      font-family: monospace; resize: none;
+      box-sizing: border-box;
+    }
+
+    .modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
+    .modal-actions button {
+      padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600;
+    }
+    #saveListBtn { background: #66bb6a; color: white; }
+    #cancelListBtn { background: #eee; color: #333; }
+
+
+
+    #winnerScreen {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+
+      /* BACKGROUND CHE TOÀN BỘ */
+      background-image: url('images/chucmung.png');
+     
+      z-index: 9999;
+    }
+
+    #winnerScreen.active {
+      display: flex;
+    }
+
+    #winnerName {
+      margin-top: -20px;
+      position: relative;
+      z-index: 10000;
+      background: none;
+      padding: 0;
+      font-size: 64px;
+      font-weight: 900;
+      color: #3e446b;
+      text-align: center;
+      animation: zoom 0.6s ease;
+    }
+
+
+    #fireworks {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10000; 
+      color: #ffa8a8;
+    }
+
+
+  </style>
+</head>
+<body>
+  <h1>VÒNG QUAY MAY MẮN</h1>
+  
+  <div id="wheel-container">
+    <canvas id="wheel" width="800" height="800"></canvas>
+    <img src="images/VongQuay-MuiTen2.png" id="needle">
+  </div>
+
+  <div id="result"></div>
+
+  <div class="button-group">
+    <button id="spinBtn">START</button>
+    <button id="resetListBtn">RESET</button>
+  </div>
+
+  <div id="editModal" class="modal-overlay">
+    <div class="modal-content">
+      <h2>Danh sách tên (Mỗi tên 1 dòng)</h2>
+      <textarea id="nameListTextarea" placeholder="Nhập tên..."></textarea>
+
+      <div class="modal-actions">
+        <button id="cancelListBtn">Hủy</button>
+        <button id="saveListBtn">Lưu lại</button>
+      </div>
+    </div>
+  </div>
+  
+  <div id="winnerScreen">
+    <div id="winnerName"></div>
+  </div>
+
+  <canvas id="fireworks"></canvas>
+
+<script>
+const VISIBLE_SEGMENTS = 10;
+
+let names = [];
+let currentAngle = 0;
+let isSpinning = false;
+let forcedWinnerIndex = -1;
+
+async function loadNamesFromExcel() {
+  const res = await fetch("danhsach.csv");
+  const text = await res.text();
+
+  // Mỗi dòng: STT, Họ tên
+    names = text
+  .split("\n")
+  .slice(1) // BỎ DÒNG HEADER
+  .map(line => {
+      const parts = line.split(";");
+      return {
+        id: parts[0]?.trim(),      // STT
+        full: parts[1]?.trim()     // Họ tên thật
+      };
+    })
+    .filter(n => n.full);
+
+  // nhân bản nếu ít ô
+  while (names.length > 0 && names.length < VISIBLE_SEGMENTS) {
+    names = names.concat(names);
+  }
+
+  drawWheel();
+}
+
+window.onload = async () => {
+  await loadNamesFromExcel();
+  drawWheel();
+};
+
+
+
+// CẤU HÌNH VÒNG QUAY
+const COLORS = ["#F44336", "#E91E63", "#9C27B0", "#673AB7", "#3F51B5", "#2196F3", "#03A9F4", "#00BCD4", "#009688", "#4CAF50", "#8BC34A", "#CDDC39"];
+
+// ===== ÂM THANH =====
+const spinSound = new Audio("sound/spin.mp3");
+spinSound.loop = false;   
+spinSound.volume = 0.7;
+
+const winSound = new Audio("sound/win.mp3"); 
+winSound.volume = 0.8;
+
+const canvas = document.getElementById("wheel");
+const ctx = canvas.getContext("2d");
+const W = canvas.width, H = canvas.height, CX = W/2, CY = H/2, R = W/2 - 20;
+const SEGMENT_ANGLE = (2 * Math.PI) / VISIBLE_SEGMENTS; // Góc của 1 ô (cố định)
+
+// DOM Elements
+const spinBtn = document.getElementById("spinBtn");
+const resultDisplay = document.getElementById("result");
+const editModal = document.getElementById("editModal");
+const nameTextarea = document.getElementById("nameListTextarea");
+
+
+// --- HÀM KHỞI TẠO & LƯU TRỮ ---
+
+// --- LOGIC VẼ VÒNG QUAY (QUAN TRỌNG) ---
+function drawWheel() {
+    ctx.clearRect(0, 0, W, H);
+    
+    // --- THIẾT LẬP 3 VÒNG ---
+    const R_OuterBorder = W / 2 - 20;   // Vòng viền đỏ (ngoài cùng)
+    const R_MiddleRing = R_OuterBorder - 30; // LỚP MÀU ĐẬM 
+    const R_InnerWheel = R_MiddleRing - 13;  // Vòng chứa tên (xoay)
+
+    // 1. VẼ VIỀN ĐỎ & CHẤM VÀNG (Cố định)
+    ctx.beginPath();
+    ctx.arc(CX, CY, R_OuterBorder, 0, 2 * Math.PI);
+    ctx.strokeStyle = "#dc0606"; // Màu đỏ
+    ctx.lineWidth = 50; // Độ dày viền đỏ
+    ctx.stroke();
+
+    // Vẽ các chấm vàng trên viền đỏ
+    const dotCount = 20;
+    const dotSize = 9;
+    for (let i = 0; i < dotCount; i++) {
+        const angle = (i * 2 * Math.PI) / dotCount;
+        const dotX = CX + R_OuterBorder * Math.cos(angle);
+        const dotY = CY + R_OuterBorder * Math.sin(angle);
+        ctx.beginPath();
+        ctx.arc(dotX, dotY, dotSize, 0, 2 * Math.PI);
+        // Hiệu ứng nhấp nháy + phát sáng mạnh
+        const time = Date.now() / 300;
+
+        // xen kẽ vàng đậm / vàng nhạt
+        const baseColor = (i % 2 === 0) ? "#ffeb3b" : "#fff59d";
+
+        // độ sáng dao động
+        const glowStrength = Math.sin(time + i) * 12 + 29;
+
+        ctx.save();
+        ctx.shadowBlur = glowStrength;       // PHÁT SÁNG MẠNH
+        ctx.shadowColor = baseColor;         // màu phát sáng theo chấm
+        ctx.fillStyle = baseColor;           // màu lõi
+        ctx.fill();
+        ctx.restore();
+
+    }
+
+    // 2. VẼ LỚP VÒNG TRÒN MÀU ĐẬM Ở GIỮA (Cố định)
+    // Lớp này tạo khoảng cách và làm nổi bật phần tên
+    ctx.beginPath();
+    ctx.arc(CX, CY, R_MiddleRing + 5, 0, 2 * Math.PI);
+    ctx.fillStyle = "#345de2"; // Màu đỏ đậm/mận 
+    ctx.fill();
+    ctx.strokeStyle = "#eafa03"; // Viền cực đậm để tạo khối
+    ctx.lineWidth = 9.9;
+    ctx.stroke();
+
+    // 3. VÒNG XOAY CHỨA TÊN (Phần này sẽ xoay)
+    ctx.save();
+    ctx.translate(CX, CY);
+    ctx.rotate(currentAngle); 
+
+    const totalSegmentsPassed = Math.floor(currentAngle / SEGMENT_ANGLE);
+
+    for (let i = 0; i < VISIBLE_SEGMENTS; i++) {
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.arc(0, 0, R_InnerWheel, i * SEGMENT_ANGLE, (i + 1) * SEGMENT_ANGLE);
+        
+        // Màu ô tên đậm nhạt xen kẽ
+        ctx.fillStyle = (i % 2 === 0) ? "#c0e6f8" : "#ffa8a8"; 
+        ctx.fill();
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Vẽ chữ tên
+        // Vẽ chữ tên
+        ctx.save();
+        let angleText = (i + 0.5) * SEGMENT_ANGLE;
+        ctx.rotate(angleText + Math.PI / 2);
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#000054";
+        ctx.font = "bold 26px Arial";
+
+        let nameIndex =
+          (names.length - (totalSegmentsPassed % names.length) + i) % names.length;
+
+        const displayChar = names[nameIndex].full.toUpperCase();
+        let words = displayChar.split(" ");
+
+        let lineHeight = 50;
+        let totalHeight = (words.length - 1) * lineHeight;
+        let startY = R_InnerWheel - 120;//gần tâm
+
+        for (let w = 0; w < words.length; w++) {
+          ctx.fillText(
+            words[w],
+            0,
+            -(startY - w * lineHeight + totalHeight / 2)
+          );
+        }
+
+        ctx.restore(); 
+      }
+ctx.restore(); 
+    // 4. VẼ TÂM VÒNG QUAY (Đã thu nhỏ)
+    ctx.beginPath();
+    ctx.arc(CX, CY, 20, 0, 2 * Math.PI);
+    ctx.fillStyle = "#fff";
+    ctx.fill();
+    }
+
+// --- LOGIC QUAY ---
+function getNameUnderNeedle() {
+  // Kim nằm ở góc -90 độ (12 giờ)
+  const needleAngle = -Math.PI / 2;
+
+  // Góc hiện tại của vòng quay
+  const angle = (needleAngle - currentAngle) % (2 * Math.PI);
+
+  // Quy đổi ra segment index
+  let index = Math.floor((angle + 2 * Math.PI) / SEGMENT_ANGLE) % VISIBLE_SEGMENTS;
+
+  // Tổng số segment đã đi qua
+  const passed = Math.floor(currentAngle / SEGMENT_ANGLE);
+
+  // Map về index thật trong names
+  return names[
+  (names.length - (passed % names.length) + index) % names.length
+].full;
+
+}
+
+function spin() {
+    if (isSpinning) return;
+    if (names.length === 0) { alert("Danh sách trống!"); return; }
+
+    isSpinning = true;
+    spinSound.currentTime = 0;
+    spinSound.play();
+    resultDisplay.style.backgroundColor = "#fff3cd";
+    resultDisplay.style.color = "#c62828";
+
+    let winnerIndex = Math.floor(Math.random() * names.length); // Ngẫu nhiên thật
+
+    // quay ngẫu nhiên vài vòng + thêm góc ngẫu nhiên
+    const minTurns = 6; // số vòng tối thiểu
+    const randomTurns = Math.random() * 3;
+    const randomOffset = Math.random() * SEGMENT_ANGLE;
+
+    let finalAngle =
+      currentAngle +
+      (minTurns + randomTurns) * 2 * Math.PI +
+      randomOffset;
+
+    // --- ANIMATION ---
+    const duration = 9000; // 9 giây
+    const startAngle = currentAngle;
+    const changeInAngle = finalAngle - startAngle;
+    const startTime = performance.now();
+
+    function animate(currentTime) {
+        const elapsed = currentTime - startTime;
+        const t = Math.min(elapsed / duration, 1);
+        
+        // Easing function (Quartic Out - nhanh đầu, chậm dần đều đuôi)
+        const ease = 1 - Math.pow(1 - t, 4);
+        
+        currentAngle = startAngle + changeInAngle * ease;
+        drawWheel();
+
+        if (t < 1) {
+          requestAnimationFrame(animate);
+      } else {
+          isSpinning = false;
+
+          // DỪNG ÂM QUAY
+          spinSound.pause();
+          spinSound.currentTime = 0;
+
+          // ÂM TRÚNG 
+          winSound.currentTime = 0;
+          winSound.play();
+
+          const realWinner = getNameUnderNeedle();
+          announceWinner(realWinner);
+      }
+          }
+          
+          requestAnimationFrame(animate);
+      }
+
+function announceWinner(name) {
+ document.getElementById("winnerName").innerHTML =
+  "XIN CHÚC MỪNG<br>" + name.toUpperCase();
+  document.getElementById("winnerScreen").classList.add("active");
+
+  // Ẩn vòng quay
+  document.getElementById("wheel-container").style.display = "none";
+
+  // 🔥 LOẠI NGAY NGƯỜI TRÚNG
+  names = names.filter(n => n.full !== name);
+
+  // Nếu danh sách còn quá ít thì nhân bản lại
+  while (names.length > 0 && names.length < VISIBLE_SEGMENTS) {
+    names = names.concat(names);
+  }
+
+  drawWheel();
+
+  // Pháo hoa
+  createConfetti();
+
+  // Tự tắt sau 5 giây
+  setTimeout(() => {
+    document.getElementById("winnerScreen").classList.remove("active");
+    document.getElementById("wheel-container").style.display = "block";
+    fwCtx.clearRect(0,0,fwCanvas.width,fwCanvas.height);
+  }, 5000);
+}
+
+document.getElementById("cancelListBtn").addEventListener("click", () => {
+    editModal.classList.remove("active");
+});
+
+
+document.getElementById("saveListBtn").addEventListener("click", () => {
+    const raw = nameTextarea.value.trim();
+    if (!raw) { alert("Không được để trống!"); return; }
+    
+    const newNames = raw
+  .split("\n")
+  .map(n => n.trim())
+  .filter(n => n)
+  .map((name, index) => ({
+    id: index + 1,
+    full: name
+  }));
+
+names = newNames;
+
+  
+    // Nếu list ít, nhân bản cho đẹp
+    while(names.length > 0 && names.length < VISIBLE_SEGMENTS) {
+        names = names.concat(names);
+    }
+    
+    drawWheel();
+    
+   
+    
+    editModal.classList.remove("active");
+    if (forcedWinnerIndex !== -1) {
+        resultDisplay.textContent += " (Đã cài đặt kết quả)";
+    }
+});
+
+
+
+document.getElementById("resetListBtn").addEventListener("click", () => {
+  if (confirm("Bạn có chắc muốn quay về danh sách gốc (Excel)?")) {
+    forcedWinnerIndex = -1;
+    loadNamesFromExcel(); // load lại danhsach.csv
+  }
+});
+
+spinBtn.addEventListener("click", spin);
+
+// ===== PHÁO HOA SAO + TRÒN =====
+const fwCanvas = document.getElementById("fireworks");
+const fwCtx = fwCanvas.getContext("2d");
+
+// Resize canvas
+function resizeFW() {
+  fwCanvas.width = window.innerWidth;
+  fwCanvas.height = window.innerHeight;
+}
+resizeFW();
+window.addEventListener("resize", resizeFW);
+
+// ===== PARTICLES =====
+let particles = [];
+
+// ===== VẼ NGÔI SAO =====
+function drawStar(ctx, x, y, r, points = 5) {
+  const step = Math.PI / points;
+  ctx.beginPath();
+  for (let i = 0; i < 2 * points; i++) {
+    const radius = i % 2 === 0 ? r : r / 2;
+    const angle = i * step - Math.PI / 2;
+    ctx.lineTo(
+      x + Math.cos(angle) * radius,
+      y + Math.sin(angle) * radius
+    );
+  }
+  ctx.closePath();
+  ctx.fill();
+}
+
+// ===== BẮN PHÁO HOA TỪ VỊ TRÍ WINNER =====
+function launchFromWinner(cx, cy) {
+  for (let i = 0; i < 220; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = Math.random() * 8 + 4;
+
+    particles.push({
+      x: cx,
+      y: cy,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      size: Math.random() * 8 + 6,
+      shape: Math.random() > 0.5 ? "star" : "circle",
+      hue: Math.random() * 360,
+      life: 140
+    });
+  }
+}
+
+// ===== VẼ PARTICLES =====
+function drawParticles() {
+  fwCtx.clearRect(0, 0, fwCanvas.width, fwCanvas.height);
+
+  particles.forEach(p => {
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.09; // trọng lực
+    p.life--;
+
+    fwCtx.fillStyle = `hsla(${p.hue},80%,40%,1)`;
+    fwCtx.shadowBlur = 0;   // không còn glow
+    fwCtx.shadowColor = "transparent"; // màu bóng trong suốt
+
+    if (p.shape === "circle") {
+      fwCtx.beginPath();
+      fwCtx.arc(p.x, p.y, p.size / 2, 0, Math.PI * 2);
+      fwCtx.fill();
+
+    } else if (p.shape === "star") {
+      drawStar(fwCtx, p.x, p.y, p.size / 2);
+    }
+  });
+
+  particles = particles.filter(p => p.life > 0);
+  requestAnimationFrame(drawParticles);
+}
+
+drawParticles();
+
+// ===== GỌI PHÁO HOA =====
+function createConfetti() {
+  const nameBox = document.getElementById("winnerName");
+  const rect = nameBox.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+
+  launchFromWinner(cx, cy);
+}
+
+
+
+
+</script>
+</body>
+</html>
